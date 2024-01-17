@@ -1,0 +1,521 @@
+---
+title: "Group 40 "
+output: html_notebook
+
+  
+---
+
+```{r}
+#importing libraries
+library(dplyr)
+library(stringr)
+library(tidytext)
+library(janeaustenr)
+library(ggplot2)
+library(tidyr)
+library(igraph)
+library(ggraph)
+```
+
+```{r}
+#importing data
+Data_task_1 <- read.csv('Keyword_data.csv')
+
+#keyword network analysis
+Keywords_task_1 <- Data_task_1[, 2:13]  
+keywords_task_1 <- Data_task_1[, 2:13]
+keywords_task_1 <- unlist(keywords_task_1)
+keywords_task_1 <- unique(keywords_task_1)
+
+
+keywords_task_1 <- keywords_task_1[c(2:249)] 
+keywords_task_1 <- data.frame(keywords_task_1)
+dimentions <- length(keywords_task_1$keywords_task_1)
+
+weighted_adj_mtrx <- matrix(0, nrow = dimentions, ncol = dimentions)
+rownames(weighted_adj_mtrx) <- keywords_task_1$keywords_task_1
+colnames(weighted_adj_mtrx) <- keywords_task_1$keywords_task_1
+
+for(i in 1:dimentions)
+{
+  for(j in 1:dim(Keywords_task_1)[1])
+  {
+    for(k in 1:dim(Keywords_task_1)[2])
+    {
+      if(any(keywords_task_1$keywords_task_1[i] == Keywords_task_1[j,]))
+      {
+        if(keywords_task_1$keywords_task_1[i]!=Keywords_task_1[j,k] & Keywords_task_1[j,k] != "" )
+        {
+          B = Keywords_task_1[j,k]
+          weighted_adj_mtrx[i,B] = weighted_adj_mtrx[i,B] + 1
+        
+        }
+        if(keywords_task_1$keywords_task_1[i]==Keywords_task_1[j,k] & Keywords_task_1[j,k] != "" )
+        {
+          A = Keywords_task_1[j,k]
+          weighted_adj_mtrx[i,A] = 0
+        }
+      }
+    }
+  }
+}
+```
+
+
+```{r}
+#converting adjency matric to weighted network
+netwrk<- graph.adjacency(weighted_adj_mtrx,weighted=TRUE)
+weightd_netwrk <- get.data.frame(netwrk)
+plot(netwrk)
+```
+
+
+```{r}
+#calculating degree and strength
+degre <- degree(netwrk, mode="all")
+strngth <- strength(netwrk, mode="all")
+print(degre)
+print(strngth)
+```
+
+
+```{r}
+#printing top 10 nodes by degree and strength
+degr <- data.frame(degre)
+deg_des <- sort(degr$degre, decreasing = TRUE)
+head(deg_des, 10)
+
+strn <- data.frame(strngth)
+strn_des <- sort(strn$strngth, decreasing = TRUE)
+head(strn_des, 10)
+```
+
+
+```{r}
+#printing top 10 node pairs by weight
+weightd_netwrk %>%
+  arrange(desc(weight)) %>%
+  head(10)
+```
+
+```{r}
+#plot for average strength on y-axis and degree on x-axis
+avg_strength <- strn$strngth/248
+plot(degr$degre, avg_strength, xlab="degree", ylab="avg_strength")
+```
+```{r}
+#importing packages
+library(dplyr)
+library(stringr)
+library(tidytext)
+library(janeaustenr)
+library(ggplot2)
+library(tidyr)
+library(igraph)
+library(ggraph)
+library(stopwords)
+```
+
+```{r}
+#importing files
+year_2017 <- read.csv("2017.csv")
+year_2018 <- read.csv("2018.csv")
+year_2019 <- read.csv("2019.csv")
+year_2020 <- read.csv("2020.csv")
+year_2021 <- read.csv("2021.csv")
+year_2022 <- read.csv("2022.csv")
+```
+
+```{r}
+#creating stopwords
+stopwrds <- setdiff(stopwords(source="stopwords-iso"),stopwords(source = "snowball"))
+stopwrds <- as.data.frame(stopwrds)
+head(stopwrds)
+colnames(stopwrds)[1] <- "a"
+head(stopwrds)
+
+nstopwords =as.data.frame(c("1","2","4","5","6","7","8","9","10","http",
+                               "https","t.co","â","ðÿ","@","itâ","iâ","amp",
+                               "donâ","ï", "youâ","weâ","yeah","ð","ñ","ðÿš",
+                               "haha","true","day","erdayastronaut", "ppathole",
+                               "wholemarsblog","nasaspaceflight","teslaownerssv",
+                               "flcnhvy","kristennetten","sciguyspace",
+                               "cleantechnica", "fredericlambert",
+                               "rationaletienne","boring","teslarati",
+                               "thirdrowtesla","pretty","hard",
+                               "lot","evafoxu","thatâ","annerajb",'to','the','is','of','an','a','for','in','it','is',
+                               'that','on','are','we','this','and','have','has','had','be','if','will','or','by','about',
+                               'so','it’s','i','with','my','they','you','him','her','his','he','she','your','you', 'what', 'why', 'where', 'who', 'our', 'ours','them','their','but'
+                               ,'me','mine','from','as','yes','no','not','can','lot'
+                               ,"we've","what's","doesn't",',','.','_','http','Thereâ€™s','itâ€™s '))
+colnames(nstopwords)[1] <- "b"
+stopwrds <- data.frame(stopwrds = c(stopwrds[,"a"], nstopwords[,"b"]))
+stopwrds <- unlist(stopwrds)
+```
+
+```{r}
+#word frequency
+year_2017_word <- year_2017 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2017_word <- year_2017_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2017_word)
+#histogram for word fequency
+total_year_2017_words <- year_2017_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2017_word <- left_join(year_2017_word,total_year_2017_words[1:2])
+ggplot(year_2017_word,aes(n/total))+
+  ggtitle("2017 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2017_word <- year_2017_word %>% mutate(`rank` = row_number())
+frq_rank2017 <- year_2017_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2017 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2017 Zipf's law")
+rank_subs <- frq_rank2017 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2017 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.6, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2017")
+
+year_2017_bigrams <- year_2017 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2017_bigrams <- year_2017_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2017_bigrams <- year_2017_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2017_bigrams <- year_2017_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2017_bigrams %>%
+  filter(n >3) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+```{r}
+#word frequency
+year_2018_word <- year_2018 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2018_word <- year_2018_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2018_word)
+#histogram for word fequency
+total_year_2018_words <- year_2018_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2018_word <- left_join(year_2018_word,total_year_2018_words[1:2])
+ggplot(year_2018_word,aes(n/total))+
+  ggtitle("2018 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2018_word <- year_2018_word %>% mutate(`rank` = row_number())
+frq_rank2018 <- year_2018_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2018 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2018 Zipf's law")
+rank_subs <- frq_rank2018 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2018 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.6, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2018")
+
+year_2018_bigrams <- year_2018 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2018_bigrams <- year_2018_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2018_bigrams <- year_2018_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2018_bigrams <- year_2018_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2018_bigrams %>%
+  filter(n >6) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+```{r}
+#word frequency
+year_2019_word <- year_2019 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2019_word <- year_2019_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2019_word)
+#histogram for word fequency
+total_year_2019_words <- year_2019_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2019_word <- left_join(year_2017_word,total_year_2019_words[1:2])
+ggplot(year_2019_word,aes(n/total))+
+  ggtitle("2019 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2019_word <- year_2019_word %>% mutate(`rank` = row_number())
+frq_rank2019 <- year_2019_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2019 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2019 Zipf's law")
+rank_subs <- frq_rank2019 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2019 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.6, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2019")
+
+year_2019_bigrams <- year_2019 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2019_bigrams <- year_2019_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2019_bigrams <- year_2019_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2019_bigrams <- year_2019_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2019_bigrams %>%
+  filter(n >9) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+```{r}
+#word frequency
+year_2020_word <- year_2020 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2020_word <- year_2020_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2020_word)
+#histogram for word fequency
+total_year_2020_words <- year_2020_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2020_word <- left_join(year_2020_word,total_year_2020_words[1:2])
+ggplot(year_2020_word,aes(n/total))+
+  ggtitle("2020 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2020_word <- year_2020_word %>% mutate(`rank` = row_number())
+frq_rank2020 <- year_2020_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2020 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2017 Zipf's law")
+rank_subs <- frq_rank2020 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2020 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.6, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2017")
+
+year_2020_bigrams <- year_2020 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2020_bigrams <- year_2020_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2020_bigrams <- year_2020_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2020_bigrams <- year_2020_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2020_bigrams %>%
+  filter(n >10) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+
+```{r}
+#word frequency
+year_2021_word <- year_2021 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2021_word <- year_2021_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2021_word)
+#histogram for word fequency
+total_year_2021_words <- year_2021_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2021_word <- left_join(year_2021_word,total_year_2021_words[1:2])
+ggplot(year_2021_word,aes(n/total))+
+  ggtitle("2021 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2021_word <- year_2021_word %>% mutate(`rank` = row_number())
+frq_rank2021 <- year_2021_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2021 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2017 Zipf's law")
+rank_subs <- frq_rank2021 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2021 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.4, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2017")
+
+year_2021_bigrams <- year_2021 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2021_bigrams <- year_2021_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2021_bigrams <- year_2021_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2021_bigrams <- year_2021_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2021_bigrams %>%
+  filter(n >4) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+```{r}
+#word frequency
+year_2022_word <- year_2022 %>% unnest_tokens(ElonMuskwords, tweet) %>% 
+  count(ElonMuskwords, sort = T) 
+year_2022_word <- year_2022_word %>% filter(!ElonMuskwords %in% stopwrds)
+
+head(year_2022_word)
+#histogram for word fequency
+total_year_2022_words <- year_2022_word %>% 
+  group_by(ElonMuskwords) %>%count(total = sum(n))
+year_2022_word <- left_join(year_2022_word,total_year_2022_words[1:2])
+ggplot(year_2022_word,aes(n/total))+
+  ggtitle("2022 Word Frequency") + geom_histogram(bins = 30, show.legend = F)
+
+# Zipf's law
+year_2022_word <- year_2022_word %>% mutate(`rank` = row_number())
+frq_rank2022 <- year_2022_word %>% group_by(ElonMuskwords) %>% 
+  mutate(`term frequency` = n/total) %>% 
+  ungroup()
+
+frq_rank2022 %>% 
+  ggplot(aes(rank, `term frequency`, group=1, color = "red")) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() + ggtitle("2022")
+rank_subs <- frq_rank2022 %>% 
+  filter(rank < 1050,rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subs)
+#bigrams
+frq_rank2022 %>% 
+  ggplot(aes(rank, `term frequency`, color = "blue")) + 
+  geom_abline(intercept = -1.5, slope = -0.7, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()+ ggtitle("2022")
+
+year_2022_bigrams <- year_2022 %>%
+  unnest_tokens(bigram, tweet, token = "ngrams", n = 2)
+
+year_2022_bigrams <- year_2022_bigrams %>% select(bigram)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+year_2022_bigrams <- year_2017_bigrams %>%
+  filter(!word1 %in% stopwrds) %>%
+  filter(!word2 %in% stopwrds)
+
+year_2022_bigrams <- year_2022_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_graph <- year_2022_bigrams %>%
+  filter(n >3) %>%
+  graph_from_data_frame()
+set.seed(2000)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
